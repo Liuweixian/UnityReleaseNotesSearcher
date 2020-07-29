@@ -2,8 +2,15 @@
 # -*- coding: UTF-8 -*
 import sys
 import requests
+import argparse
 
-def GetResponseFromUnityDotCom(versionString):
+parser = argparse.ArgumentParser(description="")
+parser.add_argument('-fv', '--fromVersion', default='2017.1.0', required=True)
+parser.add_argument('-tv', '--toVersion', default='2020.4.40')
+parser.add_argument('-ss', '--searchString', nargs='+', required=True)
+args = parser.parse_args()
+
+def GetResponseFromUnityDotCom(versionString, logError):
 	curUrl1 = "https://unity3d.com/unity/whats-new/unity-" + versionString
 	r = requests.get(curUrl1)
 	if r.status_code != 200:
@@ -11,7 +18,8 @@ def GetResponseFromUnityDotCom(versionString):
 		r = requests.get(curUrl2)
 		
 	if r.status_code != 200:
-		print 'Can not find ' + versionString + ' Checked Urls: ' + curUrl1 + ' ' + curUrl2
+		if logError:
+			print 'Can not find ' + versionString + ' Checked Urls: ' + curUrl1 + ' ' + curUrl2
 		return None
 	return r
 
@@ -43,7 +51,7 @@ class UnityVersion(object):
 		if len(self.versionNums) != 3:
 			print 'Invalid Version String:', versionString
 			return None
-		r = GetResponseFromUnityDotCom(versionString)
+		r = GetResponseFromUnityDotCom(versionString, True)
 		return r
 
 	def NextVersion(self):
@@ -52,34 +60,33 @@ class UnityVersion(object):
 			print 'Invalid Version String:', versionString
 			return
 		currentVersionString = str(self.versionNums[0]) + "." + str(self.versionNums[1]) + "." + str(self.versionNums[2] + 1)
-		r = GetResponseFromUnityDotCom(currentVersionString)
+		r = GetResponseFromUnityDotCom(currentVersionString, False)
 		if r != None:
 			self.versionNums[2] += 1
 			return
 
 		currentVersionString = str(self.versionNums[0]) + "." + str(self.versionNums[1] + 1) + "." + str(self.versionNums[2])
-		r = GetResponseFromUnityDotCom(currentVersionString)
+		r = GetResponseFromUnityDotCom(currentVersionString, False)
 		if r != None:
 			self.versionNums[1] += 1
 			return
 
 		currentVersionString = str(self.versionNums[0] + 1) + "." + str(self.versionNums[1]) + "." + str(self.versionNums[2])
-		r = GetResponseFromUnityDotCom(currentVersionString)
+		r = GetResponseFromUnityDotCom(currentVersionString, False)
 		if r != None:
 			self.versionNums[0] += 1
 			return
 
 
 def main():
-	defaultFromVersion = UnityVersion("2017.1.1")
-	defaultToVersion = UnityVersion("2020.4.40")
-	if len(sys.argv) > 4:
-		defaultFromVersion = UnityVersion(sys.argv[1])
-		defaultToVersion = UnityVersion(sys.argv[2])
-	elif len(sys.argv) == 4:
-		defaultFromVersion = UnityVersion(sys.argv[1]) 
+	defaultFromVersion = UnityVersion(args.fromVersion)
+	defaultToVersion = UnityVersion(args.toVersion)
 
+	print(defaultFromVersion.versionNums)
+	print(defaultToVersion.versionNums)
+	print(args.searchString)
 	defaultFromVersion.NextVersion()
+	print(defaultToVersion.versionNums)
 	r = defaultFromVersion.GetResponse()
 	'''while True:
 		r = defaultFromVersion.GetResponse()
