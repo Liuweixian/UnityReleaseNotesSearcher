@@ -15,7 +15,7 @@ def main():
 	patch_release_url = 'https://unity3d.com/get-unity/download/archive?_ga=1.53535144.1865728451.1487830397'
 	patch_release_response = requests.get(patch_release_url)
 	if patch_release_response.status_code != 200:
-		print 'Url is not valid:' + patch_release_url
+		print('Url is not valid:' + patch_release_url)
 		return
 
 	existing_version_list = []
@@ -34,14 +34,14 @@ def main():
 		if args.toVersion in existing_version_list[index]:
 			endIndex = index
 
-	print 'Searching from ' + existing_version_list[startIndex] + ' to ' + existing_version_list[endIndex]
+	print('Searching from ' + existing_version_list[startIndex] + ' to ' + existing_version_list[endIndex])
 
 	for index in range(startIndex, endIndex - 1, -1):
 		#print 'Searching release notes of ' + existing_version_list[index]
 		release_notes_url = "https://unity3d.com" + existing_version_list[index]
 		release_notes_response = requests.get(release_notes_url)
 		if release_notes_response.status_code != 200:
-			print 'Cannot get response from ' + release_notes_url
+			print('Cannot get response from ' + release_notes_url)
 			continue
 		notes_soup = BeautifulSoup(release_notes_response.text, 'lxml')
 		content_result = ''
@@ -53,7 +53,7 @@ def main():
 					if search_string in j.text:
 						content_result += '\t*' + j.text.replace('\n', '').replace('\r', '') + '\r\n'
 		if content_result != '':
-			print 'release notes of ' + existing_version_list[index] + ':'
-			print content_result
+			print('release notes of ' + existing_version_list[index] + ':')
+			print(content_result)
 
 main()
