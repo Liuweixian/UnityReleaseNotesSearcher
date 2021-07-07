@@ -5,6 +5,7 @@ import os
 import requests
 import argparse
 from bs4 import BeautifulSoup
+import codecs
 
 parser = argparse.ArgumentParser(description="e.g. Python UnityReleaseNotesSearcher.py -fv 2018.4.14 -tv 2019.4.4 -ss VideoPlayer")
 parser.add_argument('-nc', '--noCache', default=False)
@@ -65,11 +66,11 @@ def main():
 		version_file = cache_dir + "/" + version + ".txt"
 		exist_version_file = os.path.exists(version_file)
 		if args.noCache or not exist_version_file:
-			file = open(version_file, "w")
+			file = codecs.open(version_file, "w", 'utf-8')
 			pull_and_save(file, version_url_postfix)
 			file.close()
 
-		file = open(version_file, "r")
+		file = codecs.open(version_file, "r", 'utf-8')
 		line = file.readline()
 		content_result = ''
 		while line:
