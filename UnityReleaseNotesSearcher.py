@@ -77,6 +77,10 @@ def main():
 			for search_string in args.searchString:
 				if search_string in line:
 					content_result += "\t*" + line
+				if search_string.lower() in line:
+					content_result += "\t*" + line
+				if search_string.upper() in line:
+					content_result += "\t*" + line
 			line = file.readline()
 
 		if content_result != '':
