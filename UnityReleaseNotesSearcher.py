@@ -31,8 +31,14 @@ def pull_and_save(file, version_url_postfix):
 	for k in notes_soup.find_all('ul'):
 		if 'issuetracker' not in str(k):
 			continue
-		for j in k.find_all('p'):
-			file.write(j.text.replace('\n', '').replace('\r', '') + "\n")
+
+		result_set = k.find_all('p')
+		if len(result_set) > 0:
+			for j in k.find_all('p'):
+				file.write(j.text.replace('\n', '').replace('\r', '') + "\n")
+		else:
+			for j in k.find_all('li'):
+				file.write(j.text.replace('\n', '').replace('\r', '') + "\n")
 
 def main():
 	patch_release_url = 'https://unity3d.com/get-unity/download/archive?_ga=1.53535144.1865728451.1487830397'
@@ -65,6 +71,9 @@ def main():
 		version = version_url_postfix[version_url_postfix.rindex("/") + 1 : ];
 		version_file = cache_dir + "/" + version + ".txt"
 		exist_version_file = os.path.exists(version_file)
+		if exist_version_file:
+			version_file_stat = os.stat(version_file)
+			exist_version_file = version_file_stat.st_size > 0
 		if args.noCache or not exist_version_file:
 			file = codecs.open(version_file, "w", 'utf-8')
 			pull_and_save(file, version_url_postfix)
