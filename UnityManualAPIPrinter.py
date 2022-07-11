@@ -15,8 +15,8 @@ options.add_argument('--headless')
 browser = webdriver.Chrome(R'/Users/liuweixian/Downloads/chromedriver',options=options)
 
 def pull_class_list_from_module(url):
-	module_url = url_prefix + url;
-	print('pulling ... ' + module_url)
+	module_url = url_prefix + url
+	#print('pulling module ... ' + module_url)
 	browser.get(module_url)
 	soup = BeautifulSoup(browser.page_source, 'lxml')
 	classesBlock = None
@@ -28,6 +28,24 @@ def pull_class_list_from_module(url):
 		return
 
 	return classesBlock.parent.find_all('a')
+
+def pull_method_list_from_class(url):
+	class_url = url_prefix + url
+	#print('pulling class ... ' + class_url)
+	browser.get(class_url)
+	soup = BeautifulSoup(browser.page_source, 'lxml')
+	method_list = []
+	for k in soup.find_all('h3'):
+		if k.text == 'Inherited Members':
+			break
+
+		if k.text == 'Public Methods' or k.text == 'Static Methods':
+			method_block = k.parent.find_all('a')
+			for methodInfo in method_block:
+				method_list.append(methodInfo)
+			continue
+
+	return method_list;
 
 
 def main():
@@ -52,10 +70,18 @@ def main():
 		return
 
 	for k in aHrefList.find_all('a'):
+		module_name = k.text
 		class_list = pull_class_list_from_module(k['href'])
+		if class_list == None:
+			continue
+		
 		for classInfo in class_list:
-			print(classInfo)
-		return
+			class_name = classInfo.text
+			method_list = pull_method_list_from_class(classInfo['href'])
+			for methodInfo in method_list:
+				method_name = methodInfo.text
+				print(module_name + "," + class_name + "," + method_name)
 
 main()
-#ull_class_list_from_module('UnityEngine.AIModule.html')
+#pull_class_list_from_module('UnityEngine.AIModule.html')
+#pull_method_list_from_class('AI.NavMeshAgent.html')
