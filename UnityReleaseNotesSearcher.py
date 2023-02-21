@@ -21,7 +21,8 @@ def makesure_cache_dir_exist():
 	return cache_dir
 
 def pull_and_save(file, version_url_postfix):
-	release_notes_url = "https://unity3d.com" + version_url_postfix
+	#release_notes_url = "https://unity3d.com" + version_url_postfix
+	release_notes_url = version_url_postfix
 	release_notes_response = requests.get(release_notes_url)
 	if release_notes_response.status_code != 200:
 		print('Cannot get response from ' + release_notes_url)
@@ -41,16 +42,19 @@ def pull_and_save(file, version_url_postfix):
 				file.write(j.text.replace('\n', '').replace('\r', '') + "\n")
 
 def main():
-	patch_release_url = 'https://unity3d.com/get-unity/download/archive?_ga=1.53535144.1865728451.1487830397'
+	patch_release_url = 'https://unity.com/releases/editor/archive'
+	print('Getting all patch release from ' + patch_release_url)
 	patch_release_response = requests.get(patch_release_url)
 	if patch_release_response.status_code != 200:
 		print('Url is not valid:' + patch_release_url)
 		return
 
+	print('Finish get all patch release')
 	existing_version_list = []
 	soup = BeautifulSoup(patch_release_response.text, 'lxml')
 	for k in soup.find_all('a'):
-		if k.string == 'Release notes':
+		if k.string == 'Release Notes':
+			# print(k['href'])
 			existing_version_list.append(k['href'])
 
 	existing_version_count = len(existing_version_list)
