@@ -6,6 +6,8 @@ import requests
 import argparse
 from bs4 import BeautifulSoup
 import codecs
+import time
+import re
 
 parser = argparse.ArgumentParser(description="e.g. Python UnityReleaseNotesSearcher.py -fv 2018.4.14 -tv 2019.4.4 -ss VideoPlayer")
 parser.add_argument('-nc', '--noCache', default=False)
@@ -21,59 +23,85 @@ def makesure_cache_dir_exist():
 	return cache_dir
 
 def pull_and_save(file, version_url_postfix):
-	#release_notes_url = "https://unity3d.com" + version_url_postfix
-	release_notes_url = version_url_postfix
+	release_notes_url = f'https://unity.com/cn/releases/editor/whats-new/{version_url_postfix}#notes'
+
+	start_time = time.time()
 	release_notes_response = requests.get(release_notes_url)
 	if release_notes_response.status_code != 200:
 		print('Cannot get response from ' + release_notes_url)
 		return
+
+	print(f'Finish get release note for {version_url_postfix}, cost:{time.time() - start_time}s')
 	notes_soup = BeautifulSoup(release_notes_response.text, 'lxml')
-
-	for k in notes_soup.find_all('ul'):
-		if 'issuetracker' not in str(k):
+	for k in notes_soup.find_all('script'):
+		if '### Known Issues' not in k.text:
 			continue
+		final_notes = k.text.replace('self.__next_f.push([1,"', '')
+		final_notes = final_notes[:-3]
+		final_notes = final_notes.replace('\\n', '\n')
+		file.write(final_notes)
 
-		result_set = k.find_all('p')
-		if len(result_set) > 0:
-			for j in k.find_all('p'):
-				file.write(j.text.replace('\n', '').replace('\r', '') + "\n")
-		else:
-			for j in k.find_all('li'):
-				file.write(j.text.replace('\n', '').replace('\r', '') + "\n")
+def version_info_convertor(version_info):
+	return version_info.replace('\\"unityhub://', '')
+
+def version_info_sort(version_info):
+	num_list = version_info.split('.')
+	ret = int(num_list[0]) * 10000 + (int(num_list[1]) + 1) * 100 + int(num_list[2])
+	return ret
 
 def main():
-	patch_release_url = 'https://unity.com/releases/editor/archive'
-	print('Getting all patch release from ' + patch_release_url)
-	patch_release_response = requests.get(patch_release_url)
-	if patch_release_response.status_code != 200:
-		print('Url is not valid:' + patch_release_url)
-		return
+	need_fetch_version = False
+	patch_release_file_cache = 'patch_release_url.html'
 
-	print('Finish get all patch release')
-	existing_version_list = []
-	soup = BeautifulSoup(patch_release_response.text, 'lxml')
-	for k in soup.find_all('a'):
-		if k.string == 'Release Notes':
-			# print(k['href'])
-			existing_version_list.append(k['href'])
+	if os.path.exists(patch_release_file_cache):
+		modification_time = os.path.getmtime(patch_release_file_cache)
+		need_fetch_version = (time.time() - modification_time) > 24 * 60 * 60
+	else:
+		need_fetch_version = True;
+
+	if need_fetch_version:
+		patch_release_url = 'https://unity.com/cn/releases/editor/archive'
+		print('Getting all release version from ' + patch_release_url)
+		start_time = time.time()
+		patch_release_response = requests.get(patch_release_url)
+		if patch_release_response.status_code != 200:
+			print('Url is not valid:' + patch_release_url)
+			return
+		print(f'Finish request url, cost:{time.time() - start_time}s')
+		fo = open(patch_release_file_cache, 'w')
+		text = fo.write(patch_release_response.text)
+		fo.close()
+
+	#open the cache file to read all the version
+	fo = open(patch_release_file_cache, 'r')
+	version_cache_text = fo.read()
+	fo.close()
+
+	#use pattern to get all the version
+	search_pattern = '\\\\"unityhub://\\d*\\.\\d\\.\\d*'
+	existing_version_list = re.findall(search_pattern, version_cache_text)
+	#remove prefix for each string in list
+	existing_version_list = list(map(version_info_convertor, existing_version_list))
+	#sort all the version
+	existing_version_list = sorted(existing_version_list, key=version_info_sort)
+	#remove duplicate
+	existing_version_list = list(dict.fromkeys(existing_version_list))
 
 	existing_version_count = len(existing_version_list)
-	startIndex = existing_version_count - 1
-	endIndex = 0
-
+	startIndex = 0
+	endIndex = existing_version_count - 1
 	for index in range(existing_version_count):
 		if args.fromVersion in existing_version_list[index]:
 			startIndex = index
 		if args.toVersion in existing_version_list[index]:
 			endIndex = index
-
 	print('Searching from ' + existing_version_list[startIndex] + ' to ' + existing_version_list[endIndex])
 
 	cache_dir = makesure_cache_dir_exist()
-	for index in range(startIndex, endIndex - 1, -1):
+
+	for index in range(startIndex, endIndex + 1, 1):
 		version_url_postfix = existing_version_list[index]
-		version = version_url_postfix[version_url_postfix.rindex("/") + 1 : ];
-		version_file = cache_dir + "/" + version + ".txt"
+		version_file = cache_dir + "/" + version_url_postfix + ".html"
 		exist_version_file = os.path.exists(version_file)
 		if exist_version_file:
 			version_file_stat = os.stat(version_file)
@@ -97,7 +125,7 @@ def main():
 			line = file.readline()
 
 		if content_result != '':
-			print('release notes of ' + version + ':')
+			print('release notes of ' + version_url_postfix + ':')
 			print(content_result)
 		file.close()
 
